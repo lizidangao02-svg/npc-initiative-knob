@@ -1,0 +1,29 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NPC 主动性旋钮 · 模拟界面</title>
+<link rel="stylesheet" href="../style.css">
+<style>body{background:#24252b;color:#eee;font:16px system-ui;margin:auto;max-width:700px;padding:16px;box-sizing:border-box}#sheld{display:flex;flex-direction:column;height:85vh}#chat{flex:1;padding:20px;border:1px solid #555;border-radius:12px;margin:12px 0}#form_sheld{width:100%}#send_form{display:flex;gap:8px}textarea{flex:1;min-width:0;background:#333;color:white;border-radius:8px;padding:12px}button{background:#555;color:white;border:0;border-radius:8px}input{accent-color:#b2a2ed}</style>
+<h3>扩展界面预览（模拟 SillyTavern）</h3><div id="sheld"><div id="chat">NPC dialogue</div><div id="form_sheld"><div id="send_form"><textarea placeholder="输入消息…"></textarea><button>发送</button></div></div></div>
+<script>
+const handlers = new Map();
+const events = Object.fromEntries(['APP_READY','CHAT_CHANGED','GENERATION_AFTER_COMMANDS','GENERATION_ENDED','GENERATION_STOPPED','SETTINGS_UPDATED'].map(x => [x,x]));
+window.fixture = {
+  saves: 0,
+  ctx: {
+    extensionSettings: JSON.parse(localStorage.getItem('npc-fixture') || '{}'),
+    extensionPrompts: { existing: { value: 'Existing engine: preserve this.' } },
+    eventTypes: events,
+    eventSource: {
+      on(type, fn) { if (!handlers.has(type)) handlers.set(type, new Set()); handlers.get(type).add(fn); },
+      removeListener(type, fn) { handlers.get(type)?.delete(fn); }
+    },
+    setExtensionPrompt(key, value, position, depth, scan=false, role=0, filter=null) {
+      this.extensionPrompts[key] = { value: String(value), position: Number(position), depth: Number(depth), scan: !!scan, role: Number(role), filter };
+    },
+    saveSettingsDebounced() { fixture.saves++; localStorage.setItem('npc-fixture', JSON.stringify(fixture.ctx.extensionSettings)); }
+  },
+  async emit(type, ...args) { for (const fn of handlers.get(type) || []) await fn(...args); }
+};
+window.SillyTavern = { getContext: () => fixture.ctx };
+</script>
+<script type="module">import * as extension from '../index.js'; window.extension = extension; await fixture.emit('APP_READY'); window.ready = true;</script>
+</html>

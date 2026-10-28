@@ -1,0 +1,22 @@
+#npc_initiative_knob_v1 {
+    flex: 0 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 12px;
+    color: var(--SmartThemeBodyColor, inherit);
+    background: var(--SmartThemeBlurTintColor, transparent);
+    border: 1px solid var(--SmartThemeBorderColor, #777);
+    border-radius: 10px;
+    margin-bottom: 6px;
+    font-size: 0.9em;
+}
+#npc_initiative_knob_v1 .npc-knob-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+#npc_initiative_knob_v1 .npc-knob-switch { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+#npc_initiative_knob_v1 .npc-knob-range { display: flex; align-items: center; gap: 10px; margin: 3px 0; }
+#npc_initiative_knob_v1 input[type="range"] { flex: 1; width: auto; min-width: 70px; margin: 0; min-height: 28px; }
+#npc_initiative_knob_v1 input[type="checkbox"] { margin: 0; }
+#npc_initiative_knob_v1 summary { cursor: pointer; padding: 5px 0; }
+#npc_initiative_knob_v1 p { margin: 6px 0; }
+#npc_initiative_knob_v1 .npc-knob-note { opacity: 0.85; font-size: 0.9em; }
+#npc_initiative_knob_v1 pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 220px; overflow-y: auto; user-select: text; font-size: 0.85em; }
+#npc_initiative_knob_v1 :focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }

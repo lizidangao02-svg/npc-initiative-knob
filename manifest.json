@@ -1,0 +1,17 @@
+{
+  "display_name": "NPC 主动性旋钮",
+  "loading_order": 100,
+  "requires": [],
+  "optional": [],
+  "js": "index.js",
+  "css": "style.css",
+  "author": "NPC Initiative Knob contributors",
+  "version": "1.0.1",
+  "minimum_client_version": "1.19.0",
+  "auto_update": false,
+  "hooks": {
+    "disable": "onDisable",
+    "delete": "onDisable"
+  },
+  "homePage": "https://github.com/lizidangao02-svg/npc-initiative-knob"
+}
