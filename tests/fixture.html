@@ -3,27 +3,53 @@
 <link rel="stylesheet" href="../style.css">
 <style>body{background:#24252b;color:#eee;font:16px system-ui;margin:auto;max-width:700px;padding:16px;box-sizing:border-box}#sheld{display:flex;flex-direction:column;height:85vh}#chat{flex:1;padding:20px;border:1px solid #555;border-radius:12px;margin:12px 0}#form_sheld{width:100%}#send_form{display:flex;gap:8px}textarea{flex:1;min-width:0;background:#333;color:white;border-radius:8px;padding:12px}button{background:#555;color:white;border:0;border-radius:8px}input{accent-color:#b2a2ed}</style>
 <h3>扩展界面预览（模拟 SillyTavern）</h3><div id="sheld"><div id="chat">NPC dialogue</div><div id="form_sheld"><div id="send_form"><textarea placeholder="输入消息…"></textarea><button>发送</button></div></div></div>
-<script>
-const handlers = new Map();
-const events = Object.fromEntries(['APP_READY','CHAT_CHANGED','GENERATION_AFTER_COMMANDS','GENERATION_ENDED','GENERATION_STOPPED','SETTINGS_UPDATED'].map(x => [x,x]));
+<script type="module">
+const params = new URLSearchParams(location.search);
+const upstream = params.has('upstream') ? await import('./upstream-contract.js') : null;
+const eventTypes = upstream?.event_types || {
+  APP_READY: 'app_ready', CHAT_CHANGED: 'chat_id_changed', GENERATION_AFTER_COMMANDS: 'GENERATION_AFTER_COMMANDS',
+  GENERATION_ENDED: 'generation_ended', GENERATION_STOPPED: 'generation_stopped', SETTINGS_UPDATED: 'settings_updated',
+};
+class FixtureEmitter {
+  handlers = new Map();
+  readyArgs;
+  on(type, fn) {
+    if (!this.handlers.has(type)) this.handlers.set(type, new Set());
+    this.handlers.get(type).add(fn);
+    if (type === eventTypes.APP_READY && this.readyArgs) fn(...this.readyArgs);
+  }
+  removeListener(type, fn) { this.handlers.get(type)?.delete(fn); }
+  async emit(type, ...args) {
+    for (const fn of [...(this.handlers.get(type) || [])]) await fn(...args);
+    if (type === eventTypes.APP_READY) this.readyArgs = args;
+  }
+}
+const emitter = upstream ? new upstream.EventEmitter([eventTypes.APP_READY]) : new FixtureEmitter();
+let prompts = { existing: { value: 'Existing engine: preserve this.' } };
+if (upstream) upstream.extension_prompts.existing = prompts.existing;
 window.fixture = {
   saves: 0,
   ctx: {
     extensionSettings: JSON.parse(localStorage.getItem('npc-fixture') || '{}'),
-    extensionPrompts: { existing: { value: 'Existing engine: preserve this.' } },
-    eventTypes: events,
-    eventSource: {
-      on(type, fn) { if (!handlers.has(type)) handlers.set(type, new Set()); handlers.get(type).add(fn); },
-      removeListener(type, fn) { handlers.get(type)?.delete(fn); }
-    },
-    setExtensionPrompt(key, value, position, depth, scan=false, role=0, filter=null) {
-      this.extensionPrompts[key] = { value: String(value), position: Number(position), depth: Number(depth), scan: !!scan, role: Number(role), filter };
+    get extensionPrompts() { return upstream ? upstream.extension_prompts : prompts; },
+    eventSource: emitter,
+    setExtensionPrompt: upstream?.setExtensionPrompt || function(key, value, position, depth, scan=false, role=0, filter=null) {
+      prompts[key] = { value: String(value), position: Number(position), depth: Number(depth), scan: !!scan, role: Number(role), filter };
     },
     saveSettingsDebounced() { fixture.saves++; localStorage.setItem('npc-fixture', JSON.stringify(fixture.ctx.extensionSettings)); }
   },
-  async emit(type, ...args) { for (const fn of handlers.get(type) || []) await fn(...args); }
+  resetPrompts() { if (upstream) upstream.resetPrompts(); else prompts = {}; },
+  emit(name, ...args) { return emitter.emit(eventTypes[name] || name, ...args); }
 };
+fixture.ctx[params.has('alias') ? 'event_types' : 'eventTypes'] = eventTypes;
 window.SillyTavern = { getContext: () => fixture.ctx };
+if (upstream && !upstream.versionCompare('1.13.5', (await (await fetch('/manifest.json')).json()).minimum_client_version)) {
+  throw new Error('Extension rejected by the 1.13.5 version check');
+}
+if (params.get('ready') === 'before') await fixture.emit('APP_READY');
+const folder = params.get('folder') || 'npc-initiative-knob';
+window.extension = await import(`/scripts/extensions/third-party/${folder}/index.js`);
+if (params.get('ready') !== 'before') await fixture.emit('APP_READY');
+window.ready = true;
 </script>
-<script type="module">import * as extension from '../index.js'; window.extension = extension; await fixture.emit('APP_READY'); window.ready = true;</script>
 </html>

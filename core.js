@@ -38,3 +38,13 @@ export function hasDuplicate(prompts = {}) {
 export function isStoryGeneration(type) {
     return ['normal', 'regenerate', 'swipe', 'continue'].includes(type);
 }
+
+export function extensionNameFromUrl(moduleUrl) {
+    const path = new URL(moduleUrl).pathname;
+    const prefix = '/scripts/extensions/';
+    const start = path.indexOf(prefix);
+    if (start < 0) return null;
+    const relativePath = path.slice(start + prefix.length);
+    const end = relativePath.lastIndexOf('/');
+    return end > 0 ? decodeURIComponent(relativePath.slice(0, end)) : null;
+}

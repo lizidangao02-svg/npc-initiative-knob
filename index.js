@@ -1,8 +1,10 @@
-import { KEY, LEVELS, normalizeSettings, buildPrompt, estimateTokens, hasDuplicate, isStoryGeneration } from './core.js';
+import { KEY, LEVELS, normalizeSettings, buildPrompt, estimateTokens, hasDuplicate, isStoryGeneration, extensionNameFromUrl } from './core.js';
 
 // SillyTavern prompt enums: IN_CHAT=1, SYSTEM=0.
 const POSITION_IN_CHAT = 1;
 const ROLE_SYSTEM = 0;
+const extensionName = extensionNameFromUrl(import.meta.url);
+const disabledByManager = ctx => !!extensionName && (ctx?.extensionSettings?.disabledExtensions || []).includes(extensionName);
 let disposed = false;
 let initialized = false;
 let suppressed = false;
@@ -19,11 +21,15 @@ function settings() {
 }
 function canInject() {
     const ctx = context();
-    return !disposed && !suppressed && !!ctx && settings().enabled && !hasDuplicate(ctx.extensionPrompts);
+    return !disposed && !suppressed && !!ctx && !disabledByManager(ctx) && settings().enabled && !hasDuplicate(ctx.extensionPrompts);
 }
 function updatePrompt() {
     const ctx = context();
     if (!ctx?.setExtensionPrompt || !ctx.extensionSettings) return;
+    if (disabledByManager(ctx)) {
+        onDisable();
+        return;
+    }
     // One stable key replaces the previous value; never append to a preset or chat log.
     ctx.setExtensionPrompt(KEY, canInject() ? buildPrompt(settings()) : '', POSITION_IN_CHAT, 1, false, ROLE_SYSTEM, canInject);
     render();
@@ -98,8 +104,8 @@ function mount() {
 function subscribe(type, handler) {
     const ctx = context();
     if (type) {
-        ctx.eventSource.on(type, handler);
         subscriptions.push([type, handler]);
+        ctx.eventSource.on(type, handler);
     }
 }
 function initialize() {
@@ -133,5 +139,5 @@ const types = ctx?.eventTypes || ctx?.event_types;
 if (ctx?.setExtensionPrompt && ctx?.extensionSettings && ctx?.saveSettingsDebounced && ctx?.eventSource && types?.APP_READY && types?.GENERATION_AFTER_COMMANDS) {
     subscribe(types.APP_READY, initialize);
 } else {
-    console.error('[NPC Initiative Knob] Required SillyTavern APIs unavailable. Use ST 1.19.0 or newer. No prompt was injected.');
+    console.error('[NPC Initiative Knob] Required SillyTavern APIs unavailable. No prompt was injected.');
 }

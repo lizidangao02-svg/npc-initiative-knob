@@ -21,9 +21,15 @@ npm run test:browser
 
 Set `PLAYWRIGHT_MODULE` to use an existing Playwright module or `CHROME_PATH` to select a Chrome executable.
 
-The test serves a fixture on `127.0.0.1` and loads the extension's actual modules and stylesheet in an isolated browser profile. It checks slider interaction, persisted settings, enable/disable behavior, injection parameters, quiet-task isolation, duplicate detection, lifecycle cleanup, and a 375px layout.
+The test serves a fixture on `127.0.0.1` and loads the extension's actual modules and stylesheet in an isolated browser profile. It checks startup before and after app readiness, slider interaction, persisted settings, injection parameters, chat switching, quiet-task isolation, duplicate detection, manager-based and hook-based cleanup, renamed installation folders, and a 375px layout.
 
-The fixture uses a simulated SillyTavern context and local storage. It does not verify the actual server settings API, provider requests, or model behavior. Its screenshot is saved as `npc-initiative-preview.png` and is excluded from Git.
+The fixture uses a simulated SillyTavern context and local storage. It does not verify the actual server settings API, provider requests, or model behavior.
+
+### SillyTavern 1.13.5 source interfaces
+
+Set `ST_SOURCE_DIR` to a directory containing `package.json`, `script.js`, `events.js`, `eventemitter.js`, and `utils.js` from the official SillyTavern `1.13.5` tag, then run the browser checks. These files correspond to the upstream package metadata, `public/script.js`, `public/scripts/events.js`, `public/lib/eventemitter.js`, and `public/scripts/utils.js`.
+
+This mode uses the upstream version comparison, event definitions, event emitter, and prompt injection function. It checks that 1.13.5 accepts the manifest and initializes the extension both before and after `APP_READY`, without requiring lifecycle hooks. It is an interface test, not a running SillyTavern server or model session.
 
 ## Manual acceptance
 

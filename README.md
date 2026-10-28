@@ -6,7 +6,7 @@ The extension adds temporary narrative guidance to story-generation requests. It
 
 ## Installation
 
-Requires **SillyTavern 1.19.0 or later**.
+Requires **SillyTavern 1.13.5 or later**.
 
 1. Open **Extensions → Install extension** in SillyTavern.
 2. Paste this repository URL:
@@ -70,7 +70,7 @@ If another extension prompt contains the `[NPC Initiative Knob]` marker, this ex
 
 **Little change in behavior:** Check the enable switch and status, inspect the actual prompt, and send a new request. Model capabilities, presets, and other extensions can affect the result.
 
-**Removal:** Disable or uninstall the extension and refresh. For manual installations, remove its folder. Existing chat messages remain unchanged.
+**Removal:** Disable or uninstall the extension and refresh. On SillyTavern 1.13.5, disabling in the extension manager clears the injection through the settings event; re-enabling requires a refresh. For manual installations, remove its folder. Existing chat messages remain unchanged.
 
 **Compatibility:** Earlier SillyTavern versions are unverified. Future releases must retain the required context APIs and UI mounting points. Automated tests use a simulated SillyTavern interface; live testing with a connected model is still required.
 

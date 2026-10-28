@@ -6,8 +6,8 @@
   "js": "index.js",
   "css": "style.css",
   "author": "NPC Initiative Knob contributors",
-  "version": "1.0.1",
-  "minimum_client_version": "1.19.0",
+  "version": "1.0.2",
+  "minimum_client_version": "1.13.5",
   "auto_update": false,
   "hooks": {
     "disable": "onDisable",

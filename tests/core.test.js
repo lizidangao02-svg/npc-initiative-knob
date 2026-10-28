@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { KEY, MARKER, normalizeSettings, buildPrompt, estimateTokens, hasDuplicate, isStoryGeneration } from '../core.js';
+import { KEY, MARKER, normalizeSettings, buildPrompt, estimateTokens, hasDuplicate, isStoryGeneration, extensionNameFromUrl } from '../core.js';
 
 test('new user defaults to enabled level 3 and supplement mode', () => {
     assert.deepEqual(normalizeSettings(), { enabled: true, level: 3, supplement: true });
@@ -34,4 +34,11 @@ test('duplicate guard ignores own slot and does not mislabel unrelated prompts',
 test('background and impersonation requests are excluded', () => {
     for (const type of ['normal', 'swipe', 'regenerate', 'continue']) assert.equal(isStoryGeneration(type), true);
     for (const type of ['quiet', 'impersonate', 'unknown', undefined]) assert.equal(isStoryGeneration(type), false);
+});
+
+test('extension identity follows the installed folder across server and user mounts', () => {
+    assert.equal(extensionNameFromUrl('https://localhost/scripts/extensions/third-party/npc-initiative-knob/index.js'), 'third-party/npc-initiative-knob');
+    assert.equal(extensionNameFromUrl('https://localhost/scripts/extensions/third-party/renamed%20knob/index.js'), 'third-party/renamed knob');
+    assert.equal(extensionNameFromUrl('https://localhost/scripts/extensions/user-knob/index.js'), 'user-knob');
+    assert.equal(extensionNameFromUrl('https://localhost/index.js'), null);
 });
