@@ -21,20 +21,20 @@ npm run test:browser
 
 Set `PLAYWRIGHT_MODULE` to use an existing Playwright module or `CHROME_PATH` to select a Chrome executable.
 
-The test serves a fixture on `127.0.0.1` and loads the extension's actual modules and stylesheet in an isolated browser profile. It checks startup before and after app readiness, slider interaction, persisted settings, injection parameters, chat switching, quiet-task isolation, duplicate detection, manager-based and hook-based cleanup, renamed installation folders, and a 375px layout.
+The test serves a fixture on `127.0.0.1` and loads the extension's actual modules and stylesheet in an isolated browser profile. It checks startup before and after app readiness, toolbar dropdown interaction, keyboard and outside-click dismissal, native drawer coordination, slider interaction, persisted settings, injection parameters, chat switching, quiet-task isolation, duplicate detection, manager-based and hook-based cleanup, renamed installation folders, and a 375px layout.
 
 The fixture uses a simulated SillyTavern context and local storage. It does not verify the actual server settings API, provider requests, or model behavior.
 
 ### SillyTavern 1.13.5 source interfaces
 
-Set `ST_SOURCE_DIR` to a directory containing `package.json`, `script.js`, `events.js`, `eventemitter.js`, and `utils.js` from the official SillyTavern `1.13.5` tag, then run the browser checks. These files correspond to the upstream package metadata, `public/script.js`, `public/scripts/events.js`, `public/lib/eventemitter.js`, and `public/scripts/utils.js`.
+Set `ST_SOURCE_DIR` to a directory containing `package.json`, `script.js`, `events.js`, `eventemitter.js`, `utils.js`, `style.css`, and `jquery-3.5.1.min.js` from the official SillyTavern `1.13.5` tag, then run the browser checks. These files correspond to the upstream package metadata, `public/script.js`, `public/scripts/events.js`, `public/lib/eventemitter.js`, `public/scripts/utils.js`, `public/style.css`, and `public/lib/jquery-3.5.1.min.js`.
 
-This mode uses the upstream version comparison, event definitions, event emitter, and prompt injection function. It checks that 1.13.5 accepts the manifest and initializes the extension both before and after `APP_READY`, without requiring lifecycle hooks. It is an interface test, not a running SillyTavern server or model session.
+This mode uses the upstream version comparison, event definitions, event emitter, prompt injection function, toolbar styles, and native drawer handlers. It checks that 1.13.5 accepts the manifest and initializes the extension both before and after `APP_READY`, without requiring lifecycle hooks. It is an interface test, not a running SillyTavern server or model session.
 
 ## Manual acceptance
 
-1. Install in SillyTavern and open a character chat. Confirm that the slider defaults to level 3.
-2. Change the level and enable state, refresh, and confirm both settings persist.
+1. Install in SillyTavern and open a character chat. Confirm that the compass icon appears in the top toolbar and the panel starts closed. Open it and confirm level 3.
+2. Close with the icon, an outside click, and Escape. Open another toolbar drawer and confirm the panel closes. Then change the level and enable state, refresh, and confirm both settings persist.
 3. Inspect the prompt preview. Change the level and supplement option and check that the preview updates.
 4. Send a story-generation request and inspect the final prompt: the extension marker should occur once when enabled and be absent when disabled.
 5. Repeat with regeneration, swipes, continuation, and a different chat. Check that injections do not accumulate.

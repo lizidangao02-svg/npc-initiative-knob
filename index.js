@@ -9,6 +9,10 @@ let disposed = false;
 let initialized = false;
 let suppressed = false;
 let panel;
+let container;
+let trigger;
+let drawerObserver;
+const uiCleanup = [];
 let lastStatus = '';
 const subscriptions = [];
 const context = () => globalThis.SillyTavern?.getContext?.();
@@ -49,6 +53,7 @@ function render() {
     range.setAttribute('aria-valuetext', `${s.level} 级，${LEVELS[s.level].name}`);
     panel.querySelector('[data-supplement]').checked = s.supplement;
     panel.querySelector('[data-label]').textContent = `${s.level} · ${LEVELS[s.level].name}`;
+    if (trigger) trigger.title = `NPC 主动性：${s.enabled ? `${s.level} · ${LEVELS[s.level].name}` : '已关闭'}`;
     const prompt = buildPrompt(s);
     panel.querySelector('[data-preview]').textContent = prompt || '已关闭，不注入提示词。';
     const tokens = estimateTokens(s.enabled && !duplicate ? prompt : '');
@@ -59,11 +64,43 @@ function render() {
         lastStatus = status;
     }
 }
+function listen(target, type, handler) {
+    target.addEventListener(type, handler);
+    uiCleanup.push(() => target.removeEventListener(type, handler));
+}
+function syncDrawerState() {
+    if (!trigger || !panel) return;
+    const open = panel.classList.contains('openDrawer');
+    trigger.setAttribute('aria-expanded', String(open));
+    trigger.classList.toggle('openIcon', open);
+    trigger.classList.toggle('closedIcon', !open);
+}
+function setDrawerOpen(open, restoreFocus = false) {
+    if (!trigger || !panel) return;
+    if (open) {
+        document.querySelectorAll('.openDrawer:not(.pinnedOpen)').forEach(drawer => {
+            if (drawer !== panel) {
+                drawer.classList.remove('openDrawer');
+                drawer.classList.add('closedDrawer');
+            }
+        });
+        document.querySelectorAll('.openIcon:not(.drawerPinnedOpen)').forEach(icon => {
+            if (icon !== trigger) {
+                icon.classList.remove('openIcon');
+                icon.classList.add('closedIcon');
+            }
+        });
+    }
+    panel.classList.toggle('openDrawer', open);
+    panel.classList.toggle('closedDrawer', !open);
+    syncDrawerState();
+    if (restoreFocus) trigger.focus();
+}
 function mount() {
     if (disposed || document.getElementById(KEY)) return;
-    const host = document.querySelector('#send_form');
+    const toolbar = document.querySelector('#top-settings-holder');
     const fallback = document.querySelector('#extensions_settings2') || document.querySelector('#extensions_settings');
-    if (!host && !fallback) {
+    if (!toolbar && !fallback) {
         console.warn('[NPC Initiative Knob] UI host missing; extension was not activated.');
         return false;
     }
@@ -85,8 +122,42 @@ function mount() {
             <p class="npc-knob-note">调滑块不调用模型、不产生生成费用。发送、重生成、换回复、续写会再次带入；后台静默任务和代写用户消息不注入。估算不含聊天、预设、模型回复及格式开销，也不代表缓存后的计费量。</p>
             <details><summary>查看提示词</summary><pre data-preview></pre></details>
         </details>`;
-    if (host) host.before(panel);
-    else fallback.append(panel);
+    container = document.createElement(toolbar ? 'div' : 'details');
+    container.id = `${KEY}_drawer`;
+    if (toolbar) {
+        container.className = 'drawer npc-knob-drawer';
+        trigger = document.createElement('button');
+        trigger.type = 'button';
+        trigger.id = `${KEY}_toggle`;
+        trigger.className = 'drawer-icon npc-knob-trigger closedIcon';
+        trigger.setAttribute('aria-label', 'NPC 主动性');
+        trigger.setAttribute('aria-controls', KEY);
+        trigger.setAttribute('aria-expanded', 'false');
+        trigger.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="m16 8-2.5 5.5L8 16l2.5-5.5Z"/></svg>';
+        panel.classList.add('drawer-content', 'npc-knob-dropdown', 'closedDrawer');
+        container.append(trigger, panel);
+        toolbar.append(container);
+        listen(trigger, 'click', () => setDrawerOpen(!panel.classList.contains('openDrawer')));
+        const closeOutside = event => {
+            if (!container.contains(event.target)) setDrawerOpen(false);
+        };
+        listen(document, 'pointerdown', closeOutside);
+        listen(document, 'click', closeOutside);
+        listen(document, 'keydown', event => {
+            if (event.key === 'Escape' && panel.classList.contains('openDrawer')) {
+                setDrawerOpen(false, true);
+                event.preventDefault();
+            }
+        });
+        drawerObserver = new MutationObserver(syncDrawerState);
+        drawerObserver.observe(panel, { attributes: true, attributeFilter: ['class'] });
+    } else {
+        container.className = 'npc-knob-fallback';
+        const summary = document.createElement('summary');
+        summary.textContent = 'NPC 主动性';
+        container.append(summary, panel);
+        fallback.append(container);
+    }
     panel.querySelector('[data-enabled]').addEventListener('change', event => {
         settings().enabled = event.target.checked;
         persist();
@@ -131,7 +202,12 @@ export function onDisable() {
     for (const [type, handler] of subscriptions) ctx?.eventSource?.removeListener?.(type, handler);
     subscriptions.length = 0;
     ctx?.setExtensionPrompt?.(KEY, '', POSITION_IN_CHAT, 1, false, ROLE_SYSTEM);
-    panel?.remove();
+    drawerObserver?.disconnect();
+    drawerObserver = undefined;
+    for (const cleanup of uiCleanup.splice(0)) cleanup();
+    container?.remove();
+    container = undefined;
+    trigger = undefined;
     panel = undefined;
 }
 const ctx = context();

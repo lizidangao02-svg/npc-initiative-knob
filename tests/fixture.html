@@ -1,11 +1,53 @@
 <!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>NPC 主动性旋钮 · 模拟界面</title>
 <link rel="stylesheet" href="../style.css">
-<style>body{background:#24252b;color:#eee;font:16px system-ui;margin:auto;max-width:700px;padding:16px;box-sizing:border-box}#sheld{display:flex;flex-direction:column;height:85vh}#chat{flex:1;padding:20px;border:1px solid #555;border-radius:12px;margin:12px 0}#form_sheld{width:100%}#send_form{display:flex;gap:8px}textarea{flex:1;min-width:0;background:#333;color:white;border-radius:8px;padding:12px}button{background:#555;color:white;border:0;border-radius:8px}input{accent-color:#b2a2ed}</style>
-<h3>扩展界面预览（模拟 SillyTavern）</h3><div id="sheld"><div id="chat">NPC dialogue</div><div id="form_sheld"><div id="send_form"><textarea placeholder="输入消息…"></textarea><button>发送</button></div></div></div>
+<style>
+:root{--sheldWidth:100%;--topBarBlockSize:48px;--topBarIconSize:28px;--bottomFormBlockSize:60px;--SmartThemeBlurTintColor:#24252b;--SmartThemeBodyColor:#eee;--SmartThemeBorderColor:#555;--SmartThemeBlurStrength:10px;--animation-duration-2x:0s}
+body{background:#191a20;color:#eee;font:16px system-ui;margin:auto;max-width:900px;padding:16px;box-sizing:border-box}
+#top-settings-holder{display:flex;position:relative;height:48px;width:100%;z-index:3005}
+.drawer{display:flex;justify-content:center;align-items:center;width:100%;min-width:0}
+.drawer-icon{font-size:var(--topBarIconSize);cursor:pointer}.closedIcon{opacity:.3}
+.drawer-content{display:none;position:absolute;top:48px;left:0;right:0;margin:auto;background:#24252b;border:1px solid #555;border-radius:10px;padding:12px}.openDrawer{display:block}
+#sheld{display:flex;flex-direction:column;height:75vh}#chat{flex:1;padding:20px;border:1px solid #555;border-radius:12px;margin:12px 0}#form_sheld{width:100%}#send_form{display:flex;gap:8px}
+textarea{flex:1;min-width:0;background:#333;color:white;border-radius:8px;padding:12px}button{background:transparent;color:inherit;border:0;border-radius:8px;padding:2px;max-width:100%}input{accent-color:#b2a2ed}
+</style>
+<h3>扩展界面预览（模拟 SillyTavern）</h3><div id="top-settings-holder"></div>
+<div id="sheld"><div id="chat">NPC dialogue</div><div id="form_sheld"><div id="send_form"><textarea placeholder="输入消息…"></textarea><button>发送</button></div></div></div><div id="extensions_settings2"></div>
 <script type="module">
 const params = new URLSearchParams(location.search);
+if (params.has('upstream')) {
+  await import('./upstream-jquery.js');
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = './upstream-style.css';
+  const loaded = new Promise((resolve, reject) => { link.onload = resolve; link.onerror = reject; });
+  document.head.append(link);
+  await loaded;
+}
 const upstream = params.has('upstream') ? await import('./upstream-contract.js') : null;
+const toolbar = document.getElementById('top-settings-holder');
+if (params.get('toolbar') === '0') toolbar.remove();
+else {
+  ['⚙', '⌁', 'A', '▣', '♙', '▧', '⬡', '◷', '☺', '▤'].forEach((symbol, index) => {
+    const drawer = document.createElement('div');
+    drawer.className = 'drawer';
+    drawer.innerHTML = `<button id="native-toggle-${index}" class="drawer-toggle" type="button"><span class="drawer-icon closedIcon" style="pointer-events:none">${symbol}</span></button><section id="native-panel-${index}" class="drawer-content closedDrawer">Toolbar settings</section>`;
+    toolbar.append(drawer);
+    drawer.querySelector('button').addEventListener('click', upstream?.doNavbarIconClick || function () {
+      const panel = drawer.querySelector('.drawer-content');
+      const open = !panel.classList.contains('openDrawer');
+      if (open) {
+        document.querySelectorAll('.openDrawer:not(.pinnedOpen)').forEach(el => { el.classList.remove('openDrawer'); el.classList.add('closedDrawer'); });
+        document.querySelectorAll('.openIcon:not(.drawerPinnedOpen)').forEach(el => { el.classList.remove('openIcon'); el.classList.add('closedIcon'); });
+      }
+      panel.classList.toggle('openDrawer', open);
+      panel.classList.toggle('closedDrawer', !open);
+      drawer.querySelector('.drawer-icon').classList.toggle('openIcon', open);
+      drawer.querySelector('.drawer-icon').classList.toggle('closedIcon', !open);
+    });
+  });
+  upstream?.bindNativeDrawerEvents();
+}
 const eventTypes = upstream?.event_types || {
   APP_READY: 'app_ready', CHAT_CHANGED: 'chat_id_changed', GENERATION_AFTER_COMMANDS: 'GENERATION_AFTER_COMMANDS',
   GENERATION_ENDED: 'generation_ended', GENERATION_STOPPED: 'generation_stopped', SETTINGS_UPDATED: 'settings_updated',

@@ -7,7 +7,6 @@
     background: var(--SmartThemeBlurTintColor, transparent);
     border: 1px solid var(--SmartThemeBorderColor, #777);
     border-radius: 10px;
-    margin-bottom: 6px;
     font-size: 0.9em;
 }
 #npc_initiative_knob_v1 .npc-knob-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
@@ -20,3 +19,52 @@
 #npc_initiative_knob_v1 .npc-knob-note { opacity: 0.85; font-size: 0.9em; }
 #npc_initiative_knob_v1 pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 220px; overflow-y: auto; user-select: text; font-size: 0.85em; }
 #npc_initiative_knob_v1 :focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+
+#npc_initiative_knob_v1_drawer.npc-knob-drawer { min-width: 0; }
+#npc_initiative_knob_v1_toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1px 3px;
+    margin: 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: inherit;
+    font-size: var(--topBarIconSize, 32px);
+    line-height: 1;
+    max-width: 100%;
+    cursor: pointer;
+}
+#npc_initiative_knob_v1_toggle svg {
+    width: 1.1em;
+    height: 1em;
+    max-width: 100%;
+    pointer-events: none;
+}
+#npc_initiative_knob_v1_toggle.closedIcon { opacity: 0.3; }
+#npc_initiative_knob_v1_toggle:hover,
+#npc_initiative_knob_v1_toggle:focus-visible,
+#npc_initiative_knob_v1_toggle.openIcon { opacity: 1; }
+#npc_initiative_knob_v1_toggle:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+#npc_initiative_knob_v1.npc-knob-dropdown {
+    position: absolute;
+    top: var(--topBarBlockSize, 48px);
+    left: 0;
+    right: 0;
+    width: min(420px, calc(100vw - 16px));
+    max-width: 100%;
+    min-width: 0;
+    margin: 0 auto;
+    padding: 12px;
+    max-height: calc(100vh - var(--topBarBlockSize, 48px) - 16px);
+    max-height: calc(100dvh - var(--topBarBlockSize, 48px) - 16px);
+    overflow-y: auto;
+    background: var(--SmartThemeBlurTintColor, #24252b);
+}
+#npc_initiative_knob_v1.npc-knob-dropdown.closedDrawer { display: none; }
+#npc_initiative_knob_v1.npc-knob-dropdown.openDrawer { display: block; height: auto; }
+#npc_initiative_knob_v1_drawer.npc-knob-fallback > summary { cursor: pointer; }

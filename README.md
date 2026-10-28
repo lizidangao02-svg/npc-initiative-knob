@@ -1,6 +1,6 @@
 # NPC Initiative Knob
 
-Adjust NPC initiative and story pacing with a **1–5 slider** above the SillyTavern chat input. The default level is **3 — Moderate initiative**.
+Adjust NPC initiative and story pacing with a **1–5 slider** in a toolbar dropdown. Click the compass icon in the top toolbar to open it. The default level is **3 — Moderate initiative**.
 
 The extension adds temporary narrative guidance to story-generation requests. It saves settings, provides an enable switch and prompt preview, and estimates the additional input tokens. It does not rewrite presets or send messages automatically.
 
@@ -19,6 +19,7 @@ No build step, Extras server, or additional API key is required.
 
 ## Usage
 
+- Click the compass icon in the top toolbar to open the panel. Click again, click outside, or press Escape to close it. The panel starts closed; closing it does not disable prompt injection.
 - Enable or disable the extension with the checkbox beside the slider.
 - Click, drag, or use the arrow keys to select a level.
 - Expand the settings section to inspect the active prompt and token estimate.
@@ -66,7 +67,7 @@ If another extension prompt contains the `[NPC Initiative Knob]` marker, this ex
 
 ## Troubleshooting
 
-**Slider missing:** Check the required SillyTavern version, enable the extension, and refresh. For manual installation, check for an extra nested folder. If the chat input is unavailable, the control appears in the extension settings panel.
+**Slider missing:** Check the required SillyTavern version, enable the extension, and refresh. For manual installation, check for an extra nested folder. If the top toolbar is unavailable, a collapsible control appears in the extension settings panel.
 
 **Little change in behavior:** Check the enable switch and status, inspect the actual prompt, and send a new request. Model capabilities, presets, and other extensions can affect the result.
 
