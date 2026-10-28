@@ -84,7 +84,7 @@ npm run check
 
 Browser checks and manual acceptance steps are described in [TESTING.md](TESTING.md).
 
-Git installations support manual updates through the extension manager. Automatic updates are disabled by default.
+Git installations support update notifications and updates through the extension manager. Notifications follow SillyTavern's extension settings. SillyTavern may also update the extension during application updates when automatic extension updates are enabled.
 
 ## License
 
