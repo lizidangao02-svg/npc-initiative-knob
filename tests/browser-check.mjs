@@ -40,7 +40,7 @@ const files = new Map([
     ['/tests/fixture.html', 'tests/fixture.html'], ['/style.css', 'style.css'], ['/manifest.json', 'manifest.json'],
 ]);
 for (const folder of ['npc-initiative-knob', 'renamed-knob']) {
-    for (const name of ['index.js', 'core.js']) files.set(`/scripts/extensions/third-party/${folder}/${name}`, name);
+    for (const name of ['index.js', 'core.js', 'floating.js']) files.set(`/scripts/extensions/third-party/${folder}/${name}`, name);
 }
 const server = createServer(async (req, res) => {
     const path = new URL(req.url, 'http://localhost').pathname;
@@ -101,45 +101,70 @@ try {
         assert.equal((await prompt()).role, 0);
         const panel = page.locator(`#${KEY}`);
         const toggle = page.locator(`#${KEY}_toggle`);
+        const floating = page.locator(`#${KEY}_floating`);
+        const settled = () => page.waitForFunction(key => document.getElementById(key).getAnimations().every(animation => animation.playState !== 'running'), KEY);
+        const closed = () => panel.waitFor({ state: 'hidden' });
         const open = async () => {
-            if (!await panel.isVisible()) {
-                if (options.toolbar === '0') await page.locator(`#${KEY}_drawer > summary`).click();
-                else await toggle.click();
-            }
+            if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
+            await settled();
         };
         assert.equal(await panel.isVisible(), false);
         assert.equal(await page.locator(`#form_sheld #${KEY}`).count(), 0);
+        assert.equal(await page.locator(`#top-settings-holder #${KEY}_toggle`).count(), 0);
+        assert.equal(await floating.count(), 1);
+        assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
+        await toggle.press('Enter');
+        await settled();
+        assert.equal(await panel.isVisible(), true);
+        assert.equal(await toggle.getAttribute('aria-expanded'), 'true');
+        await toggle.press('Space');
+        await closed();
+        assert.equal((await prompt()).active, true);
+        await open();
+        await page.locator('[data-level]').focus();
+        await page.keyboard.press('Escape');
+        await closed();
+        assert.equal(await toggle.evaluate(el => el === document.activeElement), true);
+        await open();
+        await page.locator('#send_form textarea').click();
+        await closed();
         if (options.toolbar !== '0') {
-            assert.equal(await page.locator(`#top-settings-holder #${KEY}_toggle`).count(), 1);
-            assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
-            await toggle.press('Enter');
-            assert.equal(await panel.isVisible(), true);
-            assert.equal(await toggle.getAttribute('aria-expanded'), 'true');
-            await toggle.press('Space');
-            assert.equal(await panel.isVisible(), false);
-            assert.equal((await prompt()).active, true);
-            await open();
-            await page.locator('[data-level]').focus();
-            await page.keyboard.press('Escape');
-            assert.equal(await panel.isVisible(), false);
-            assert.equal(await toggle.evaluate(el => el === document.activeElement), true);
-            await open();
-            await page.locator('#send_form textarea').click();
-            assert.equal(await panel.isVisible(), false);
             await page.locator('#native-toggle-0').click();
             assert.equal(await page.locator('#native-panel-0').isVisible(), true);
             await open();
             assert.equal(await page.locator('#native-panel-0').isVisible(), false);
             await page.locator('#native-toggle-0').click();
-            assert.equal(await panel.isVisible(), false);
+            await closed();
             await page.waitForFunction(key => document.getElementById(`${key}_toggle`).getAttribute('aria-expanded') === 'false', KEY);
             await page.evaluate(() => { document.getElementById('native-panel-1').className = 'drawer-content openDrawer pinnedOpen'; });
             await open();
             assert.equal(await page.locator('#native-panel-1').isVisible(), true);
             await page.evaluate(() => { document.getElementById('native-panel-1').className = 'drawer-content closedDrawer'; });
-        } else {
-            assert.equal(await toggle.count(), 0);
         }
+        await toggle.press('Home');
+        await floating.evaluate(el => Promise.all(el.getAnimations().map(animation => animation.finished)));
+        const start = await toggle.boundingBox();
+        await page.mouse.move(start.x + 26, start.y + 26);
+        await page.mouse.down();
+        await page.mouse.move(80, 260, { steps: 8 });
+        await page.mouse.up();
+        await closed();
+        await floating.evaluate(el => Promise.all(el.getAnimations().map(animation => animation.finished)));
+        assert.equal(await toggle.getAttribute('aria-expanded'), 'false', 'Dragging must not open the panel');
+        assert.equal(await floating.getAttribute('data-side'), 'left');
+        assert.ok(Math.abs((await toggle.boundingBox()).x - 12) < 1);
+        const savedPosition = await page.evaluate(key => fixture.ctx.extensionSettings[key].floatingPosition, KEY);
+        await toggle.press('ArrowUp');
+        assert.ok(await page.evaluate(key => fixture.ctx.extensionSettings[key].floatingPosition.y, KEY) < savedPosition.y);
+        await toggle.press('ArrowRight');
+        assert.equal(await floating.getAttribute('data-side'), 'right');
+        await toggle.press('ArrowLeft');
+        const persistedPosition = await page.evaluate(key => fixture.ctx.extensionSettings[key].floatingPosition, KEY);
+        // Repeated activation during an unfinished transition must settle in the latest state.
+        await toggle.evaluate(el => { el.click(); el.click(); el.click(); });
+        await settled();
+        assert.equal(await panel.isVisible(), true);
+        assert.equal(await panel.evaluate(el => el.inert), false);
         await open();
         await page.locator('[data-level]').fill('5');
         assert.match((await prompt()).value, /Initiative 5\/5/);
@@ -147,6 +172,7 @@ try {
         await page.waitForFunction(() => window.ready);
         await alignToolbar();
         assert.equal(await panel.isVisible(), false);
+        assert.deepEqual(await page.evaluate(key => fixture.ctx.extensionSettings[key].floatingPosition, KEY), persistedPosition);
         await open();
         assert.equal(await page.locator('[data-level]').inputValue(), '5');
         await page.locator('[data-enabled]').uncheck();
@@ -181,10 +207,31 @@ try {
         await page.evaluate(() => fixture.emit('APP_READY'));
         assert.equal(await page.locator(`#${KEY}`).count(), 1);
         await page.setViewportSize({ width: 375, height: 812 });
+        await page.waitForFunction(key => {
+            const r = document.getElementById(key).getBoundingClientRect();
+            return r.x >= 0 && r.y >= 0 && r.right <= innerWidth && r.bottom <= innerHeight;
+        }, KEY);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
         const bounds = await panel.boundingBox();
         assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= 375);
-        if (options.toolbar !== '0') assert.ok(bounds.y >= 0 && bounds.y + bounds.height <= 812);
+        assert.ok(bounds.y >= 0 && bounds.y + bounds.height <= 812);
+        for (const viewport of [{ width: 320, height: 568 }, { width: 812, height: 375 }, { width: 1440, height: 900 }]) {
+            await page.setViewportSize(viewport);
+            await page.waitForFunction(key => {
+                const r = document.getElementById(key).getBoundingClientRect();
+                return r.x >= 0 && r.y >= 0 && r.right <= innerWidth && r.bottom <= innerHeight;
+            }, KEY);
+            const orb = await toggle.boundingBox();
+            assert.ok(orb.x >= 0 && orb.y >= 0 && orb.x + orb.width <= viewport.width && orb.y + orb.height <= viewport.height);
+        }
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await toggle.click();
+        await closed();
+        await toggle.click();
+        const motion = await panel.evaluate(el => el.getAnimations().map(animation => ({ duration: animation.effect.getTiming().duration, frames: animation.effect.getKeyframes() })));
+        assert.ok(motion.every(animation => animation.duration <= 90 && animation.frames.every(frame => frame.transform === 'none')));
+        await settled();
+        await page.emulateMedia({ reducedMotion: 'no-preference' });
         if (process.env.PREVIEW_PATH && options.upstream && options.ready === 'after') {
             await page.screenshot({ path: process.env.PREVIEW_PATH, fullPage: true });
         }
@@ -197,7 +244,7 @@ try {
         }
         assert.equal((await prompt()).value, '');
         assert.equal(await page.locator(`#${KEY}`).count(), 0);
-        assert.equal(await page.locator(`#${KEY}_drawer`).count(), 0);
+        assert.equal(await floating.count(), 0);
         assert.equal(await toggle.count(), 0);
         await page.evaluate(() => fixture.emit('GENERATION_AFTER_COMMANDS', 'normal'));
         assert.equal((await prompt()).value, '');
@@ -205,6 +252,49 @@ try {
         console.log(`Browser checks passed: ${upstreamContract && options.upstream ? 'ST 1.13.5 source interfaces' : 'context fixture'}, ready=${options.ready}, cleanup=${options.cleanup}.`);
         await context.close();
     }
+    const touchContext = await browser.newContext({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true });
+    const touchPage = await touchContext.newPage();
+    const touchErrors = [];
+    touchPage.on('pageerror', error => touchErrors.push(String(error)));
+    await touchPage.goto(`http://127.0.0.1:${server.address().port}/tests/fixture.html`);
+    await touchPage.waitForFunction(() => window.ready);
+    const touchToggle = touchPage.locator(`#${KEY}_toggle`);
+    const touchPanel = touchPage.locator(`#${KEY}`);
+    const session = await touchContext.newCDPSession(touchPage);
+    const touchDrag = async (target, cancel = false) => {
+        const box = await touchToggle.boundingBox();
+        const start = { x: box.x + 26, y: box.y + 26 };
+        await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
+        for (let step = 1; step <= 8; step++) {
+            await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: start.x + (target.x - start.x) * step / 8, y: start.y + (target.y - start.y) * step / 8 }] });
+        }
+        await session.send('Input.dispatchTouchEvent', { type: cancel ? 'touchCancel' : 'touchEnd', touchPoints: [] });
+        await touchPage.locator(`#${KEY}_floating`).evaluate(el => Promise.all(el.getAnimations().map(animation => animation.finished)));
+    };
+    await touchDrag({ x: 40, y: 180 });
+    assert.equal(await touchToggle.getAttribute('aria-expanded'), 'false');
+    assert.equal(await touchPage.locator(`#${KEY}_floating`).getAttribute('data-side'), 'left');
+    const touchSaved = await touchPage.evaluate(key => fixture.ctx.extensionSettings[key].floatingPosition, KEY);
+    await touchDrag({ x: 320, y: 600 }, true);
+    assert.deepEqual(await touchPage.evaluate(key => fixture.ctx.extensionSettings[key].floatingPosition, KEY), touchSaved);
+    await touchToggle.tap();
+    await touchPage.waitForFunction(key => document.getElementById(key).getAnimations().every(animation => animation.playState !== 'running'), KEY);
+    assert.equal(await touchPanel.isVisible(), true);
+    await touchPage.locator('[data-level]').fill('4');
+    await touchPanel.locator('summary').first().tap();
+    const expanded = await touchPanel.boundingBox();
+    assert.ok(expanded.x >= 0 && expanded.y >= 0 && expanded.x + expanded.width <= 375 && expanded.y + expanded.height <= 812);
+    // A shorter visible area also covers the constraints imposed by an on-screen keyboard.
+    await touchPage.setViewportSize({ width: 375, height: 360 });
+    await touchPage.waitForFunction(key => {
+        const r = document.getElementById(key).getBoundingClientRect();
+        return r.x >= 0 && r.y >= 0 && r.right <= innerWidth && r.bottom <= innerHeight;
+    }, KEY);
+    await touchPage.evaluate(() => extension.onDisable());
+    assert.equal(await touchToggle.count(), 0);
+    assert.deepEqual(touchErrors, []);
+    await touchContext.close();
+    console.log('Browser checks passed: touch drag, cancellation, docking, mobile controls, and short viewport.');
 } finally {
     await browser?.close();
     await new Promise(resolve => server.close(resolve));

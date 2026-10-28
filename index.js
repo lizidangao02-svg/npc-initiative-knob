@@ -1,4 +1,5 @@
 import { KEY, LEVELS, normalizeSettings, buildPrompt, estimateTokens, hasDuplicate, isStoryGeneration, extensionNameFromUrl } from './core.js';
+import { mountFloatingPanel } from './floating.js';
 
 // SillyTavern prompt enums: IN_CHAT=1, SYSTEM=0.
 const POSITION_IN_CHAT = 1;
@@ -9,10 +10,8 @@ let disposed = false;
 let initialized = false;
 let suppressed = false;
 let panel;
-let container;
 let trigger;
-let drawerObserver;
-const uiCleanup = [];
+let floating;
 let lastStatus = '';
 const subscriptions = [];
 const context = () => globalThis.SillyTavern?.getContext?.();
@@ -56,7 +55,7 @@ function render() {
     panel.querySelector('[data-level-number]').textContent = String(s.level);
     panel.style.setProperty('--npc-progress', `${(s.level - 1) * 25}%`);
     panel.dataset.state = !s.enabled ? 'disabled' : duplicate ? 'paused' : 'enabled';
-    if (trigger) trigger.title = `NPC 主动性：${s.enabled ? `${s.level} · ${LEVELS[s.level].name}` : '已关闭'}`;
+    if (trigger) trigger.title = `NPC 主动性：${s.enabled ? `${s.level} · ${LEVELS[s.level].name}` : '已关闭'}。点击展开或收起，拖动可移动。`;
     const prompt = buildPrompt(s);
     panel.querySelector('[data-preview]').textContent = prompt || '已关闭，不注入提示词。';
     const tokens = estimateTokens(s.enabled && !duplicate ? prompt : '');
@@ -68,46 +67,8 @@ function render() {
         lastStatus = status;
     }
 }
-function listen(target, type, handler) {
-    target.addEventListener(type, handler);
-    uiCleanup.push(() => target.removeEventListener(type, handler));
-}
-function syncDrawerState() {
-    if (!trigger || !panel) return;
-    const open = panel.classList.contains('openDrawer');
-    trigger.setAttribute('aria-expanded', String(open));
-    trigger.classList.toggle('openIcon', open);
-    trigger.classList.toggle('closedIcon', !open);
-}
-function setDrawerOpen(open, restoreFocus = false) {
-    if (!trigger || !panel) return;
-    if (open) {
-        document.querySelectorAll('.openDrawer:not(.pinnedOpen)').forEach(drawer => {
-            if (drawer !== panel) {
-                drawer.classList.remove('openDrawer');
-                drawer.classList.add('closedDrawer');
-            }
-        });
-        document.querySelectorAll('.openIcon:not(.drawerPinnedOpen)').forEach(icon => {
-            if (icon !== trigger) {
-                icon.classList.remove('openIcon');
-                icon.classList.add('closedIcon');
-            }
-        });
-    }
-    panel.classList.toggle('openDrawer', open);
-    panel.classList.toggle('closedDrawer', !open);
-    syncDrawerState();
-    if (restoreFocus) trigger.focus();
-}
 function mount() {
     if (disposed || document.getElementById(KEY)) return;
-    const toolbar = document.querySelector('#top-settings-holder');
-    const fallback = document.querySelector('#extensions_settings2') || document.querySelector('#extensions_settings');
-    if (!toolbar && !fallback) {
-        console.warn('[NPC Initiative Knob] UI host missing; extension was not activated.');
-        return false;
-    }
     panel = document.createElement('section');
     panel.id = KEY;
     panel.setAttribute('aria-label', 'NPC 主动性旋钮');
@@ -138,42 +99,14 @@ function mount() {
                 <details class="npc-knob-preview"><summary>查看提示词<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg></summary><pre data-preview></pre></details>
             </div>
         </details>`;
-    container = document.createElement(toolbar ? 'div' : 'details');
-    container.id = `${KEY}_drawer`;
-    if (toolbar) {
-        container.className = 'drawer npc-knob-drawer';
-        trigger = document.createElement('button');
-        trigger.type = 'button';
-        trigger.id = `${KEY}_toggle`;
-        trigger.className = 'drawer-icon npc-knob-trigger closedIcon';
-        trigger.setAttribute('aria-label', 'NPC 主动性');
-        trigger.setAttribute('aria-controls', KEY);
-        trigger.setAttribute('aria-expanded', 'false');
-        trigger.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="m16 8-2.5 5.5L8 16l2.5-5.5Z"/></svg>';
-        panel.classList.add('drawer-content', 'npc-knob-dropdown', 'closedDrawer');
-        container.append(trigger, panel);
-        toolbar.append(container);
-        listen(trigger, 'click', () => setDrawerOpen(!panel.classList.contains('openDrawer')));
-        const closeOutside = event => {
-            if (!container.contains(event.target)) setDrawerOpen(false);
-        };
-        listen(document, 'pointerdown', closeOutside);
-        listen(document, 'click', closeOutside);
-        listen(document, 'keydown', event => {
-            if (event.key === 'Escape' && panel.classList.contains('openDrawer')) {
-                setDrawerOpen(false, true);
-                event.preventDefault();
-            }
-        });
-        drawerObserver = new MutationObserver(syncDrawerState);
-        drawerObserver.observe(panel, { attributes: true, attributeFilter: ['class'] });
-    } else {
-        container.className = 'npc-knob-fallback';
-        const summary = document.createElement('summary');
-        summary.textContent = 'NPC 主动性';
-        container.append(summary, panel);
-        fallback.append(container);
-    }
+    floating = mountFloatingPanel(panel, {
+        getPosition: () => settings().floatingPosition,
+        savePosition: position => {
+            settings().floatingPosition = position;
+            context().saveSettingsDebounced();
+        },
+    });
+    trigger = floating.trigger;
     panel.querySelector('[data-enabled]').addEventListener('change', event => {
         settings().enabled = event.target.checked;
         persist();
@@ -218,11 +151,8 @@ export function onDisable() {
     for (const [type, handler] of subscriptions) ctx?.eventSource?.removeListener?.(type, handler);
     subscriptions.length = 0;
     ctx?.setExtensionPrompt?.(KEY, '', POSITION_IN_CHAT, 1, false, ROLE_SYSTEM);
-    drawerObserver?.disconnect();
-    drawerObserver = undefined;
-    for (const cleanup of uiCleanup.splice(0)) cleanup();
-    container?.remove();
-    container = undefined;
+    floating?.destroy();
+    floating = undefined;
     trigger = undefined;
     panel = undefined;
 }

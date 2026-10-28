@@ -21,7 +21,7 @@ npm run test:browser
 
 Set `PLAYWRIGHT_MODULE` to use an existing Playwright module or `CHROME_PATH` to select a Chrome executable.
 
-The test serves a fixture on `127.0.0.1` and loads the extension's actual modules and stylesheet in an isolated browser profile. It checks startup before and after app readiness, toolbar dropdown interaction, keyboard and outside-click dismissal, native drawer coordination, slider interaction, persisted settings, injection parameters, chat switching, quiet-task isolation, duplicate detection, manager-based and hook-based cleanup, renamed installation folders, and a 375px layout.
+The test serves a fixture on `127.0.0.1` and loads the extension's actual modules and stylesheet in an isolated browser profile. It checks startup before and after app readiness, floating-panel interaction without a toolbar dependency, mouse and touch dragging, edge docking, position persistence, interrupted animations, reduced motion, keyboard and outside-click dismissal, native drawer coordination, slider interaction, persisted settings, injection parameters, chat switching, quiet-task isolation, duplicate detection, manager-based and hook-based cleanup, renamed installation folders, and phone, landscape, and desktop layouts.
 
 The fixture uses a simulated SillyTavern context and local storage. It does not verify the actual server settings API, provider requests, or model behavior.
 
@@ -33,13 +33,15 @@ This mode uses the upstream version comparison, event definitions, event emitter
 
 ## Manual acceptance
 
-1. Install in SillyTavern and open a character chat. Confirm that the compass icon appears in the top toolbar and the panel starts closed. Open it and confirm level 3.
-2. Close with the icon, an outside click, and Escape. Open another toolbar drawer and confirm the panel closes. Then change the level and enable state, refresh, and confirm both settings persist.
-3. Inspect the prompt preview. Change the level and supplement option and check that the preview updates.
-4. Send a story-generation request and inspect the final prompt: the extension marker should occur once when enabled and be absent when disabled.
-5. Repeat with regeneration, swipes, continuation, and a different chat. Check that injections do not accumulate.
-6. In group chats, check each NPC's actual request. Confirm that quiet background requests exclude the injection.
-7. Compare levels 1, 3, and 5 using the same scene. Assess NPC initiative, causal consistency, pacing, and the user's opportunity to respond.
-8. Disable or uninstall the extension and refresh. Confirm that the control and injection are removed and presets are unchanged.
+1. Install in SillyTavern and open a character chat. Confirm that the floating compass button appears near the right screen edge and the panel starts closed. Open it and confirm level 3.
+2. Drag the button with a mouse and a touch screen. Confirm that it docks to the nearest edge without accidentally opening the panel. Refresh and confirm its position persists. With keyboard focus on the button, test arrow keys and Home.
+3. Open and close repeatedly, including before an animation finishes. Close with the button, an outside click, and Escape. Open another toolbar drawer and confirm the panel closes. Enable reduced motion in the system settings and confirm a short fade replaces the scaling animation. Resize the screen and open the mobile keyboard; keep the button and panel within the visible area.
+4. Change the level and enable state, refresh, and confirm both settings persist.
+5. Inspect the prompt preview. Change the level and supplement option and check that the preview updates.
+6. Send a story-generation request and inspect the final prompt: the extension marker should occur once when enabled and be absent when disabled.
+7. Repeat with regeneration, swipes, continuation, and a different chat. Check that injections do not accumulate.
+8. In group chats, check each NPC's actual request. Confirm that quiet background requests exclude the injection.
+9. Compare levels 1, 3, and 5 using the same scene. Assess NPC initiative, causal consistency, pacing, and the user's opportunity to respond.
+10. Disable or uninstall the extension and refresh. Confirm that the control and injection are removed and presets are unchanged.
 
 Live checks use the connected model and its normal token allowance. Model behavior, provider tokenization, theme compatibility, and interactions with other extensions require testing in the target installation.

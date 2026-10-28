@@ -1,6 +1,6 @@
 # NPC Initiative Knob
 
-Adjust NPC initiative and story pacing with a **1–5 slider** in a toolbar dropdown. Click the compass icon in the top toolbar to open it. The default level is **3 — Moderate initiative**.
+Adjust NPC initiative and story pacing with a **1–5 slider** in a floating panel. Click the floating compass button to open it. The default level is **3 — Moderate initiative**.
 
 The extension adds temporary narrative guidance to story-generation requests. It saves settings, provides an enable switch and prompt preview, and estimates the additional input tokens. It does not rewrite presets or send messages automatically.
 
@@ -19,7 +19,9 @@ No build step, Extras server, or additional API key is required.
 
 ## Usage
 
-- Click the compass icon in the top toolbar to open the panel. Click again, click outside, or press Escape to close it. The panel starts closed; closing it does not disable prompt injection.
+- Click the floating compass button to open the panel. Click again, click outside, or press Escape to close it. The panel starts closed; closing it does not disable prompt injection.
+- Drag the button to reposition it. It docks to the nearest screen edge and remembers its position across refreshes. When the button has keyboard focus, use the arrow keys to move it or Home to restore its default position.
+- The panel expands from the button and folds back when closed. Animations use a gentler fade when the system's reduced-motion preference is enabled.
 - Enable or disable the extension with the checkbox beside the slider.
 - Click, drag, or use the arrow keys to select a level.
 - Expand the settings section to inspect the active prompt and token estimate.
@@ -67,13 +69,13 @@ If another extension prompt contains the `[NPC Initiative Knob]` marker, this ex
 
 ## Troubleshooting
 
-**Slider missing:** Check the required SillyTavern version, enable the extension, and refresh. For manual installation, check for an extra nested folder. If the top toolbar is unavailable, a collapsible control appears in the extension settings panel.
+**Slider missing:** Look for the floating compass button near the right edge of the screen. Check the required SillyTavern version, enable the extension, and refresh. For manual installation, check for an extra nested folder.
 
 **Little change in behavior:** Check the enable switch and status, inspect the actual prompt, and send a new request. Model capabilities, presets, and other extensions can affect the result.
 
 **Removal:** Disable or uninstall the extension and refresh. On SillyTavern 1.13.5, disabling in the extension manager clears the injection through the settings event; re-enabling requires a refresh. For manual installations, remove its folder. Existing chat messages remain unchanged.
 
-**Compatibility:** Earlier SillyTavern versions are unverified. Future releases must retain the required context APIs and UI mounting points. Automated tests use a simulated SillyTavern interface; live testing with a connected model is still required.
+**Compatibility:** Earlier SillyTavern versions are unverified. Future releases must retain the required context APIs. Automated tests use a simulated SillyTavern interface; live testing with a connected model is still required.
 
 ## Development
 
