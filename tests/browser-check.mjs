@@ -84,9 +84,11 @@ try {
         const errors = [];
         page.on('pageerror', error => errors.push(String(error)));
         page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+        const alignToolbar = () => page.addStyleTag({ content: '#top-settings-holder{position:fixed!important;top:0!important;left:16px!important;right:16px!important;width:calc(100% - 32px)!important;max-width:868px!important;margin:auto!important}' });
         const params = new URLSearchParams(options);
         await page.goto(`http://127.0.0.1:${server.address().port}/tests/fixture.html?${params}`);
         await page.waitForFunction(() => window.ready);
+        await alignToolbar();
         const prompt = () => page.evaluate(key => {
             const p = fixture.ctx.extensionPrompts[key];
             return { value: p?.value, position: p?.position, depth: p?.depth, scan: p?.scan, role: p?.role, active: p?.filter ? p.filter() : false };
@@ -122,7 +124,7 @@ try {
             assert.equal(await panel.isVisible(), false);
             assert.equal(await toggle.evaluate(el => el === document.activeElement), true);
             await open();
-            await page.locator('#chat').click();
+            await page.locator('#send_form textarea').click();
             assert.equal(await panel.isVisible(), false);
             await page.locator('#native-toggle-0').click();
             assert.equal(await page.locator('#native-panel-0').isVisible(), true);
@@ -143,6 +145,7 @@ try {
         assert.match((await prompt()).value, /Initiative 5\/5/);
         await page.reload();
         await page.waitForFunction(() => window.ready);
+        await alignToolbar();
         assert.equal(await panel.isVisible(), false);
         await open();
         assert.equal(await page.locator('[data-level]').inputValue(), '5');
