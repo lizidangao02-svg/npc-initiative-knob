@@ -20,7 +20,7 @@ No build step, Extras server, or additional API key is required.
 ## Usage
 
 - Click the floating compass button to open the panel. Click again, click outside, or press Escape to close it. The panel starts closed; closing it does not disable prompt injection.
-- Drag the button to reposition it. It docks to the nearest screen edge and remembers its position across refreshes. When the button has keyboard focus, use the arrow keys to move it or Home to restore its default position.
+- Drag the button anywhere within the visible screen area. It stays where you place it and remembers its position across refreshes. When the button has keyboard focus, use the arrow keys to move it or Home to restore its default position.
 - The panel expands from the button and folds back when closed. Animations use a gentler fade when the system's reduced-motion preference is enabled.
 - Enable or disable the extension with the checkbox beside the slider.
 - Click, drag, or use the arrow keys to select a level.

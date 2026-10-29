@@ -152,14 +152,18 @@ try {
         await floating.evaluate(el => Promise.all(el.getAnimations().map(animation => animation.finished)));
         assert.equal(await toggle.getAttribute('aria-expanded'), 'false', 'Dragging must not open the panel');
         assert.equal(await floating.getAttribute('data-side'), 'left');
-        assert.ok(Math.abs((await toggle.boundingBox()).x - 12) < 1);
+        assert.ok(Math.abs((await toggle.boundingBox()).x - 54) < 1);
         const savedPosition = await page.evaluate(key => fixture.ctx.extensionSettings[key].floatingPosition, KEY);
+        assert.ok(savedPosition.x > 0 && savedPosition.x < 0.2);
         await toggle.press('ArrowUp');
         assert.ok(await page.evaluate(key => fixture.ctx.extensionSettings[key].floatingPosition.y, KEY) < savedPosition.y);
         await toggle.press('ArrowRight');
-        assert.equal(await floating.getAttribute('data-side'), 'right');
+        await floating.evaluate(el => Promise.all(el.getAnimations().map(animation => animation.finished)));
+        assert.ok(Math.abs((await toggle.boundingBox()).x - 74) < 1);
         await toggle.press('ArrowLeft');
+        await floating.evaluate(el => Promise.all(el.getAnimations().map(animation => animation.finished)));
         const persistedPosition = await page.evaluate(key => fixture.ctx.extensionSettings[key].floatingPosition, KEY);
+        assert.ok(Math.abs((await toggle.boundingBox()).x - 54) < 1);
         // Repeated activation during an unfinished transition must settle in the latest state.
         await toggle.evaluate(el => { el.click(); el.click(); el.click(); });
         await settled();
@@ -273,7 +277,7 @@ try {
     };
     await touchDrag({ x: 40, y: 180 });
     assert.equal(await touchToggle.getAttribute('aria-expanded'), 'false');
-    assert.equal(await touchPage.locator(`#${KEY}_floating`).getAttribute('data-side'), 'left');
+    assert.ok(Math.abs((await touchToggle.boundingBox()).x - 14) < 1);
     const touchSaved = await touchPage.evaluate(key => fixture.ctx.extensionSettings[key].floatingPosition, KEY);
     await touchDrag({ x: 320, y: 600 }, true);
     assert.deepEqual(await touchPage.evaluate(key => fixture.ctx.extensionSettings[key].floatingPosition, KEY), touchSaved);
@@ -294,7 +298,7 @@ try {
     assert.equal(await touchToggle.count(), 0);
     assert.deepEqual(touchErrors, []);
     await touchContext.close();
-    console.log('Browser checks passed: touch drag, cancellation, docking, mobile controls, and short viewport.');
+    console.log('Browser checks passed: touch drag, cancellation, free placement, mobile controls, and short viewport.');
 } finally {
     await browser?.close();
     await new Promise(resolve => server.close(resolve));

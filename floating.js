@@ -2,7 +2,7 @@ import { KEY } from './core.js';
 
 const SIZE = 52;
 const GAP = 12;
-const DEFAULT_POSITION = { side: 'right', y: 0.65 };
+const DEFAULT_POSITION = { x: 1, y: 0.65 };
 const clamp = (value, min, max) => Math.min(Math.max(min, value), Math.max(min, max));
 
 export function mountFloatingPanel(panel, { getPosition, savePosition }) {
@@ -35,7 +35,7 @@ export function mountFloatingPanel(panel, { getPosition, savePosition }) {
     let drag;
     let suppressClickUntil = 0;
     let panelAnimation;
-    let dockAnimation;
+    let positionAnimation;
     let x = 0;
     let y = 0;
 
@@ -55,7 +55,7 @@ export function mountFloatingPanel(panel, { getPosition, savePosition }) {
     function position() {
         const p = getPosition();
         return {
-            side: p?.side === 'left' ? 'left' : 'right',
+            x: Number.isFinite(p?.x) ? clamp(p.x, 0, 1) : p?.side === 'left' ? 0 : 1,
             y: Number.isFinite(p?.y) ? clamp(p.y, 0, 1) : DEFAULT_POSITION.y,
         };
     }
@@ -68,8 +68,7 @@ export function mountFloatingPanel(panel, { getPosition, savePosition }) {
         if (destroyed || drag?.moved) return;
         const v = viewport();
         const p = position();
-        moveTo(p.side === 'left' ? v.left : v.right - SIZE, v.top + p.y * Math.max(0, v.bottom - v.top - SIZE));
-        root.dataset.side = p.side;
+        moveTo(v.left + p.x * Math.max(0, v.right - v.left - SIZE), v.top + p.y * Math.max(0, v.bottom - v.top - SIZE));
         if (panel.hidden) return;
         const width = Math.min(380, v.right - v.left);
         panel.style.width = `${width}px`;
@@ -79,9 +78,12 @@ export function mountFloatingPanel(panel, { getPosition, savePosition }) {
         height = panel.offsetHeight || height;
         let panelX;
         let panelY;
-        const fitsBeside = p.side === 'right' ? x - GAP - width >= v.left : x + SIZE + GAP + width <= v.right;
+        const leftSpace = x - v.left;
+        const rightSpace = v.right - x - SIZE;
+        const panelOnLeft = leftSpace >= width + GAP || rightSpace < width + GAP && leftSpace >= rightSpace;
+        const fitsBeside = leftSpace >= width + GAP || rightSpace >= width + GAP;
         if (fitsBeside) {
-            panelX = p.side === 'right' ? x - GAP - width : x + SIZE + GAP;
+            panelX = panelOnLeft ? x - GAP - width : x + SIZE + GAP;
             panelY = clamp(y + SIZE / 2 - height / 2, v.top, v.bottom - height);
         } else {
             panelX = clamp(p.side === 'right' ? x + SIZE - width : x, v.left, v.right - width);
@@ -109,7 +111,7 @@ export function mountFloatingPanel(panel, { getPosition, savePosition }) {
         trigger.setAttribute('aria-label', `${open ? '收起' : '展开'} NPC 主动性`);
         panel.inert = !open;
         if (open) {
-            dockAnimation?.cancel();
+            positionAnimation?.cancel();
             document.querySelectorAll('.openDrawer:not(.pinnedOpen)').forEach(drawer => {
                 drawer.classList.remove('openDrawer');
                 drawer.classList.add('closedDrawer');
@@ -142,14 +144,14 @@ export function mountFloatingPanel(panel, { getPosition, savePosition }) {
             panelAnimation = undefined;
         };
     }
-    function dock(nextPosition, animate = true) {
+    function moveToSavedPosition(nextPosition, animate = true) {
         if (!panel.hidden) setOpen(false, { animate: false });
         const from = root.style.transform;
-        dockAnimation?.cancel();
+        positionAnimation?.cancel();
         savePosition(nextPosition);
         layout();
-        if (animate && !reducedMotion.matches && root.animate) {
-            dockAnimation = root.animate([{ transform: from }, { transform: root.style.transform }], {
+        if (animate && !reducedMotion.matches && root.animate && from !== root.style.transform) {
+            positionAnimation = root.animate([{ transform: from }, { transform: root.style.transform }], {
                 duration: 180, easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
             });
         }
@@ -164,7 +166,7 @@ export function mountFloatingPanel(panel, { getPosition, savePosition }) {
         suppressClickUntil = cancel ? 0 : performance.now() + 400;
         if (cancel) { layout(); return; }
         const v = viewport();
-        dock({ side: x + SIZE / 2 < (v.left + v.right) / 2 ? 'left' : 'right', y: clamp((y - v.top) / Math.max(1, v.bottom - v.top - SIZE), 0, 1) });
+        moveToSavedPosition({ x: clamp((x - v.left) / Math.max(1, v.right - v.left - SIZE), 0, 1), y: clamp((y - v.top) / Math.max(1, v.bottom - v.top - SIZE), 0, 1) });
     }
 
     listen(trigger, 'click', event => {
@@ -177,7 +179,7 @@ export function mountFloatingPanel(panel, { getPosition, savePosition }) {
     listen(trigger, 'pointerdown', event => {
         if (event.button !== 0 || event.isPrimary === false) return;
         const bounds = root.getBoundingClientRect();
-        dockAnimation?.cancel();
+        positionAnimation?.cancel();
         moveTo(bounds.x, bounds.y);
         drag = { id: event.pointerId, startX: event.clientX, startY: event.clientY, x, y, moved: false };
         trigger.setPointerCapture(event.pointerId);
@@ -202,9 +204,11 @@ export function mountFloatingPanel(panel, { getPosition, savePosition }) {
         event.preventDefault();
         const p = position();
         const v = viewport();
-        if (event.key === 'Home') dock({ ...DEFAULT_POSITION });
-        else dock({ side: event.key === 'ArrowLeft' ? 'left' : event.key === 'ArrowRight' ? 'right' : p.side,
-            y: clamp(p.y + (event.key === 'ArrowUp' ? -20 : event.key === 'ArrowDown' ? 20 : 0) / Math.max(1, v.bottom - v.top - SIZE), 0, 1) });
+        if (event.key === 'Home') moveToSavedPosition({ ...DEFAULT_POSITION });
+        else moveToSavedPosition({
+            x: clamp(p.x + (event.key === 'ArrowLeft' ? -20 : event.key === 'ArrowRight' ? 20 : 0) / Math.max(1, v.right - v.left - SIZE), 0, 1),
+            y: clamp(p.y + (event.key === 'ArrowUp' ? -20 : event.key === 'ArrowDown' ? 20 : 0) / Math.max(1, v.bottom - v.top - SIZE), 0, 1),
+        });
     });
     const closeOutside = event => { if (open && !root.contains(event.target)) setOpen(false); };
     listen(document, 'pointerdown', closeOutside);
@@ -218,7 +222,7 @@ export function mountFloatingPanel(panel, { getPosition, savePosition }) {
     });
     const onResize = () => {
         if (drag) finishDrag({ pointerId: drag.id }, true);
-        dockAnimation?.cancel();
+        positionAnimation?.cancel();
         layout();
     };
     listen(window, 'resize', onResize);
@@ -228,7 +232,7 @@ export function mountFloatingPanel(panel, { getPosition, savePosition }) {
     }
     listen(reducedMotion, 'change', () => {
         panelAnimation?.finish();
-        dockAnimation?.cancel();
+        positionAnimation?.cancel();
     });
     const observer = new ResizeObserver(layout);
     observer.observe(panel);
@@ -236,7 +240,7 @@ export function mountFloatingPanel(panel, { getPosition, savePosition }) {
     return { trigger, destroy() {
         destroyed = true;
         panelAnimation?.cancel();
-        dockAnimation?.cancel();
+        positionAnimation?.cancel();
         observer.disconnect();
         cleanups.forEach(cleanup => cleanup());
         root.remove();
